@@ -92,12 +92,19 @@ y_test = np.array(y_test_ar)
 y_train = to_categorical(y_train, num_classes)
 y_test = to_categorical(y_test, num_classes)
 
+#%%
+#
+#import numpy as np
+##for i in range(28,32):
+#pilImg = Image.fromarray(np.uint8(X_train[29]))
+#pilImg.show()
+
 #%% create data generator 
 train_datagen = ImageDataGenerator(rescale = 1./img_size)
 test_datagen = ImageDataGenerator(rescale = 1./img_size)
 
 train_generator = train_datagen.flow(X_train, y_train, batch_size=32, seed = 13)
-validation_generator = train_datagen.flow(X_train, y_train, batch_size=32, seed = 13)
+validation_generator = test_datagen.flow(X_test, y_test, batch_size=32, seed = 13)
 #%% finetuning resnet50
 
 input_tensor = Input(shape=(img_size, img_size, 3))
@@ -126,16 +133,15 @@ checkpointer = ModelCheckpoint(filepath='model.{epoch:02d}-{val_loss:.2f}.hdf5',
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                   patience=5, min_lr=0.001)
-
-#
+#%% fit_generator
 history = model.fit_generator(train_generator,
-                    steps_per_epoch=len(X_test),
+                    steps_per_epoch=len(X_train)/32,
                     epochs=10,
                     validation_data=validation_generator,
-                    validation_steps=len(X_train),
+                    validation_steps=len(X_test)/32,
                     verbose=1,
                     callbacks=[reduce_lr, checkpointer])
-
+#%%plot history
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
 plt.title('model accuracy')
