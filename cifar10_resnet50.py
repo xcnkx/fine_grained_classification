@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Thu Oct 25 07:46:49 2018
+
+@author: n-kamiya
+"""
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Oct 23 08:45:20 2018
 
 @author: n-kamiya
@@ -26,32 +33,31 @@ from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 import matplotlib.pyplot as plt
 from keras.utils.vis_utils import plot_model
 import pandas as pd
+from keras.datasets import mnist
 #%%
 
 K.clear_session()
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 test_nb = 5794
 train_nb = 5994
 num_classes = 200
-img_size= 448
-
+img_size= 32
 train_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/train/"
 test_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/test/"
 #%% create data generator 
-train_datagen = ImageDataGenerator(rescale = 1./img_size)
-test_datagen = ImageDataGenerator(rescale = 1./img_size)
+from keras.datasets import cifar10
 
-train_generator = train_datagen.flow_from_directory(
-        train_path,
-        target_size=(img_size, img_size),
-        batch_size=BATCH_SIZE,
-        seed = 13)
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+y_train = to_categorical(y_train, num_classes)
+y_test = to_categorical(y_test, num_classes)
 
-validation_generator = test_datagen.flow_from_directory(
-        test_path,
-        target_size=(img_size, img_size),
-        batch_size=BATCH_SIZE,
-        seed = 13)
+datagen = ImageDataGenerator(
+    featurewise_center=True,
+    featurewise_std_normalization=True,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    horizontal_flip=True)
 #%% finetuning resnet50
 
 input_tensor = Input(shape=(img_size, img_size, 3))
@@ -69,9 +75,7 @@ model = Model(input=base_model.input, output=top_model(base_model.output))
 for layer in base_model.layers:
     layer.trainable = False
 
-opt = SGD(lr=0.0001, momentum=0.9)
-
-
+opt = SGD(lr=0.01, momentum=0.9)
 model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
 #%%
@@ -83,14 +87,8 @@ checkpointer = ModelCheckpoint(filepath='model.{epoch:02d}-{val_loss:.2f}.hdf5',
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                   patience=5, min_lr=0.001)
 #%% fit_generator
-
-history = model.fit_generator(train_generator,
-                    steps_per_epoch=train_nb/BATCH_SIZE,
-                    epochs=10,
-                    validation_data=validation_generator,
-                    validation_steps=test_nb/BATCH_SIZE,
-                    verbose=1,
-                    callbacks=[reduce_lr, checkpointer])
+history = model.fit_generator(datagen.flow(x_train, y_train, batch_size=32),
+                    steps_per_epoch=len(x_train) / 32, epochs=10)
 #%%plot history
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])

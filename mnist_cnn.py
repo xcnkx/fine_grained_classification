@@ -5,14 +5,27 @@ Created on Thu Oct 18 08:25:38 2018
 
 @author: n-kamiya
 """
-from keras.losses import categorical_crossentropy
-from keras.utils import to_categorical
+from keras.applications.resnet50 import ResNet50
+from keras.applications.resnet50 import preprocess_input
+from keras.models import Sequential, Model
+from keras.layers import Input, Dense, Dropout, Activation, Flatten
+from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D, GlobalAveragePooling2D, AveragePooling2D
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau
+from keras.optimizers import SGD
+from keras.utils.np_utils import to_categorical
+from keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
+from keras.regularizers import l2
+import matplotlib.image as mpimg
+import numpy as np
+import keras.backend as K
+import pathlib
+from PIL import Image
+import cv2
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+import matplotlib.pyplot as plt
+from keras.utils.vis_utils import plot_model
+import pandas as pd
 from keras.datasets import mnist
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout, Flatten,Conv2D, MaxPooling2D
-from keras.optimizers import Adadelta
-from keras import backend as K
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -41,23 +54,25 @@ num_classes = 10
 epochs = 10
 
 
-    
-model = Sequential()
-model.add(Conv2D(32, kernel_size=(3, 3),
-                 activation='relu',
-                 input_shape=input_shape))
-model.add(Conv2D(64, (3, 3), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
-model.add(Flatten())
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(num_classes, activation='softmax'))
+input_tensor = Input(shape=(img_rows, img_cols, 1))
+base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
 
-model.compile(loss=categorical_crossentropy,
-              optimizer= Adadelta(),
-              metrics=['accuracy'])
+# change only the output layer to a FC that it's output is a softmax layer
+top_model = Sequential()
+top_model.add(Flatten(input_shape=base_model.output_shape[1:]))
+top_model.add(Dense(1024,activation="relu"))
+top_model.add(Dropout(0.5))
+top_model.add(Dense(num_classes, activation="softmax"))
 
+model = Model(input=base_model.input, output=top_model(base_model.output))
+
+for layer in base_model.layers:
+    layer.trainable = False
+
+opt = SGD(lr=0.01, momentum=0.9)
+
+
+model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['top_3_categorical_accuracy'])
 model.fit(x_train, y_train,
           batch_size=batch_size,
           epochs = epochs,
