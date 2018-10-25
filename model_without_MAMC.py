@@ -25,86 +25,33 @@ import cv2
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 import matplotlib.pyplot as plt
 from keras.utils.vis_utils import plot_model
-
-
+import pandas as pd
+from database import cub2002011_db
+#%%
 
 K.clear_session()
-
+BATCH_SIZE = 32
+test_nb = 5794
+train_nb = 5994
 num_classes = 200
 img_size= 255
-image_txt = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011"
-images_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/images"
-        
-#%%        
-def load_images(root):
-    all_imgs = []
-    all_classes = []
-    img_path = []
-    Xtrain = []
-    ytrain = []
-    Xtest = []
-    ytest = []
-    s = []
-    
-    #Get classes names from images.txt 
-    with open("%s/images.txt" % root) as f:
-        for line in f.readlines():
-            data = line.split()
-            img_path.append(data[1])
-            class_name = data[1].split(".")
-            class_name = class_name[1].split("/")
-            all_classes.append(class_name[0])
-    #Get train/test data         
-    with open("%s/train_test_split.txt" % root) as f:
-        for line in f.readlines():
-                data = line.split()
-                s.append(data)
-    #run a loop to get all images formating to array                          
-    for image in img_path:
-        path = images_path +'/'+ image
-        resize_img_ar = img_to_array(load_img(path, target_size=(img_size, img_size)))
-        all_imgs.append(resize_img_ar)
-    #split train/test data      
-    for img in s:
-        if img[1] == "1":
-            Xtrain.append(all_imgs[int(img[0])-1])
-            ytrain.append(all_classes[int(img[0])-1])
-        elif img[1] == "0":
-            Xtest.append(all_imgs[int(img[0])-1])
-            ytest.append(all_classes[int(img[0])-1])
-        
-    return np.array(Xtrain), np.array(ytrain), np.array(Xtest), np.array(ytest)
-
-#%% Loading image files
-X_train, y_train, X_test, y_test = load_images(image_txt)
-#%% Labeling y data
-y_train_list = list(y_train.tolist())
-y_test_list = list(y_test.tolist())
-le_train = LabelEncoder()
-le_test = LabelEncoder()
-y_train_ar = le_train.fit_transform(y_train_list)
-y_test_ar = le_test.fit_transform(y_test_list)
-
-y_train = np.array(y_train_ar)
-y_test = np.array(y_test_ar)
-
-#%% one_hot encoder with keras to_categorical
-y_train = to_categorical(y_train, num_classes)
-y_test = to_categorical(y_test, num_classes)
-
-#%%
-#
-#import numpy as np
-##for i in range(28,32):
-#pilImg = Image.fromarray(np.uint8(X_train[29]))
-#pilImg.show()
-
+train_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/train/"
+test_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/test/"
 #%% create data generator 
 train_datagen = ImageDataGenerator(rescale = 1./img_size)
 test_datagen = ImageDataGenerator(rescale = 1./img_size)
 
-train_generator = train_datagen.flow(X_train, y_train, batch_size=32, seed = 13)
-validation_generator = test_datagen.flow(X_test, y_test, batch_size=32, seed = 13)
+train_generator = train_datagen.flow_from_directory(
+        train_path,
+        target_size=(img_size, img_size),
+        batch_size=BATCH_SIZE,
+        seed = 13)
+
+validation_generator = test_datagen.flow_from_directory(
+        test_path,
+        target_size=(img_size, img_size),
+        batch_size=BATCH_SIZE,
+        seed = 13)
 #%% finetuning resnet50
 
 input_tensor = Input(shape=(img_size, img_size, 3))
@@ -122,7 +69,7 @@ model = Model(input=base_model.input, output=top_model(base_model.output))
 for layer in base_model.layers:
     layer.trainable = False
 
-opt = SGD(lr=.01, momentum=.9)
+opt = SGD(lr=0.01, momentum=0.9)
 model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
 #%%
@@ -135,10 +82,10 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                   patience=5, min_lr=0.001)
 #%% fit_generator
 history = model.fit_generator(train_generator,
-                    steps_per_epoch=len(X_train)/32,
+                    steps_per_epoch=train_nb/BATCH_SIZE,
                     epochs=10,
                     validation_data=validation_generator,
-                    validation_steps=len(X_test)/32,
+                    validation_steps=test_nb/BATCH_SIZE,
                     verbose=1,
                     callbacks=[reduce_lr, checkpointer])
 #%%plot history
