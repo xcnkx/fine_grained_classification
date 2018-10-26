@@ -5,6 +5,8 @@ Created on Tue Oct 23 08:45:20 2018
 
 @author: n-kamiya
 """
+import datetime
+now = datetime.datetime.now()
 
 from keras.applications.resnet50 import ResNet50
 from keras.applications.resnet50 import preprocess_input
@@ -38,7 +40,11 @@ img_size= 448
 train_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/train/"
 test_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/test/"
 #%% create data generator 
-train_datagen = ImageDataGenerator(rescale = 1./img_size)
+train_datagen = ImageDataGenerator(rescale = 1./img_size, 
+                                   zoom_range=[0.5,1],
+                                   rotation_range=90,
+                                   horizontal_flip=True,
+                                   vertical_flip=True)
 test_datagen = ImageDataGenerator(rescale = 1./img_size)
 
 train_generator = train_datagen.flow_from_directory(
@@ -57,12 +63,13 @@ validation_generator = test_datagen.flow_from_directory(
 input_tensor = Input(shape=(img_size, img_size, 3))
 base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
 
-# change only the output layer to a FC that it's output is a softmax layer
+# change only the output layer 
 top_model = Sequential()
+# Use batch normalization instead of Dropout to test it
 top_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-top_model.add(Dense(1024,activation="relu"))
+top_model.add(Dense(1024, activation='relu'))
 top_model.add(Dropout(0.5))
-top_model.add(Dense(num_classes, activation="softmax"))
+top_model.add(Dense(num_classes, activation='softmax'))
 
 model = Model(input=base_model.input, output=top_model(base_model.output))
 
@@ -78,7 +85,7 @@ model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy
 plot_model(model, to_file="model.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='model.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                   patience=5, min_lr=0.001)
@@ -88,22 +95,30 @@ history = model.fit_generator(train_generator,
                     steps_per_epoch=train_nb/BATCH_SIZE,
                     epochs=10,
                     validation_data=validation_generator,
-                    validation_steps=test_nb/BATCH_SIZE,
+                    validation_steps=64,
                     verbose=1,
-                    callbacks=[reduce_lr, checkpointer])
+                    callbacks=[checkpointer])
 #%%plot history
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
-plt.title('model accuracy')
+plt.title('model_without_MAMC accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_{0:%d%m}-{0:%H%M%S}.png".format(now))
 plt.show()
+
 #loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
-plt.title('model loss')
+plt.title('model_without_MAMC loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_{0:%d%m}-{%H%M%S}.png".format(now))
 plt.show()
+
+
+
+
+
