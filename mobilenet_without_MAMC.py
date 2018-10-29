@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Mon Oct 29 08:18:52 2018
+
+@author: n-kamiya
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Oct 23 08:45:20 2018
 
 @author: n-kamiya
 """
 
 
-from keras.applications.resnet50 import ResNet50
+from keras.applications.mobilenet import MobileNet
 from keras.models import Sequential, Model
 from keras.layers import Input, Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D, GlobalAveragePooling2D, AveragePooling2D
@@ -60,13 +68,12 @@ validation_generator = test_datagen.flow_from_directory(
 #%% finetuning resnet50
 
 input_tensor = Input(shape=(img_size, img_size, 3))
-base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
+base_model = MobileNet(weights = "imagenet", include_top=False, input_tensor=input_tensor)
 
 # change only the output layer 
 top_model = Sequential()
-#top_model.add(Flatten(input_shape=base_model.output_shape[1:]))
 top_model.add(GlobalAveragePooling2D(input_shape=base_model.output_shape[1:]))
-top_model.add(Dense(256,activation='relu'))
+#top_model.add(Dense(256,activation='relu'))
 top_model.add(Dropout(0.5))
 top_model.add(Dense(num_classes, activation='softmax'))
 
@@ -93,7 +100,7 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
 
 history = model.fit_generator(train_generator,
                     steps_per_epoch=train_nb/BATCH_SIZE,
-                    epochs=100,
+                    epochs=10,
                     validation_data=validation_generator,
                     validation_steps=64,
                     verbose=1,
