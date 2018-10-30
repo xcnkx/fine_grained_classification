@@ -8,6 +8,7 @@ Created on Tue Oct 23 08:45:20 2018
 
 from keras.callbacks import EarlyStopping
 from keras.applications.resnet50 import ResNet50
+from keras.applications.vgg19 import VGG19
 from keras.models import Model
 from keras.layers import Input, Dense, Flatten, Multiply, add
 from keras.layers import GlobalAveragePooling2D
@@ -60,20 +61,18 @@ train_generator = train_datagen.flow_from_directory(
         train_path,
         target_size=(img_size, img_size),
         batch_size=BATCH_SIZE,
-        seed = 13,
-        classes=classes)
+        seed = 13)
 
 validation_generator = test_datagen.flow_from_directory(
         test_path,
         target_size=(img_size, img_size),
         batch_size=BATCH_SIZE,
-        seed = 13,
-        classes=classes)
+        seed = 13)
 #%% finetuning resnet50
 
 input_tensor = Input(shape=(img_size, img_size, 3))
-base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
-
+base_model = VGG19(weights = "imagenet", include_top=False, input_tensor=input_tensor)
+#base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
 
 for layer in base_model.layers:
     layer.trainable = False
@@ -100,11 +99,11 @@ fc = add([fc1,fc2]) # fc1 + fc2
 prediction = Dense(num_classes, activation='softmax', name='prediction')(fc)
 
 
-model = Model(input=base_model.input, output=prediction)
+model = Model(inputs=base_model.input, outputs=prediction)
 
-opt = SGD(lr=0.00001, momentum=0.9)
+opt = SGD(lr=0.001, momentum=0.9)
 
-#model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_alpha.best_loss.hdf5")
+#model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_osme.best_loss.hdf5")
     
 model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
@@ -112,12 +111,12 @@ model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy
 plot_model(model, to_file="model.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_osme.best_loss.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_osme_no_weights.best_loss.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
-                  patience=5, min_lr=0.000001)
+                  patience=3, min_lr=0.000001)
 
-es_cb = EarlyStopping(patience=3)
+es_cb = EarlyStopping(patience=5)
 
 #%% fit_generator
 
