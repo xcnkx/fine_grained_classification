@@ -91,6 +91,7 @@ opt = SGD(lr=0.0001, momentum=0.9)
 #
 for layer in base_model_vgg19.layers[:-2]:
     layer.trainable = False
+    
 
 model_vgg19.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
