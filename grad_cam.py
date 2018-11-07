@@ -65,10 +65,10 @@ def Grad_Cam(input_model, x, layer_name):
 
     return jetcam
 
-if __name__ == '__main__':
-
-    model = load_model("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME.best_loss.hdf5")
-    x = img_to_array(load_img('/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/images/020.Yellow_breasted_Chat/Yellow_Breasted_Chat_0039_21654.jpg', target_size=(448,448)))
-    newx= np.expand_dims(x,axis=0)
-    preds = model.predict(newx)
-    print(classes[preds.argmax()])
+#if __name__ == '__main__':
+#
+#    model = load_model("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME.best_loss.hdf5")
+#    x = img_to_array(load_img('/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/images/020.Yellow_breasted_Chat/Yellow_Breasted_Chat_0039_21654.jpg', target_size=(448,448)))
+#    newx= np.expand_dims(x,axis=0)
+#    preds = model.predict(newx)
+#    print(classes[preds.argmax()])

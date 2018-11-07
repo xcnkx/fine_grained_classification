@@ -27,6 +27,7 @@ from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 import matplotlib.pyplot as plt
 from keras.utils.vis_utils import plot_model
 import pandas as pd
+import se_inception_v3
 #%%
 
 K.clear_session()
@@ -73,7 +74,7 @@ validation_generator = test_datagen.flow_from_directory(
 
 input_tensor = Input(shape=(img_size, img_size, 3))
 #base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
-base_model = InceptionV3(weights = "imagenet", include_top=False, input_tensor=input_tensor)
+base_model = se_inception_v3.se_inception_v3(include_top=False, input_tensor=input_tensor)
 
 
 #for layer in base_model.layers:
@@ -82,14 +83,14 @@ base_model = InceptionV3(weights = "imagenet", include_top=False, input_tensor=i
 #%%
 # change only the output layer 
 top_model = Sequential()
-#top_model.add(Flatten(input_shape=base_model.output_shape[1:]))
+#top_model.add(Convolution2d(input_shape=base_model.output_shape[1:]))
 top_model.add(GlobalAveragePooling2D(input_shape=base_model.output_shape[1:]))
 top_model.add(Dense(1024,activation='relu'))
 top_model.add(Dense(num_classes, activation='softmax'))
 
 model = Model(inputs=base_model.input, outputs=top_model(base_model.output))
 
-opt = SGD(lr=0.001, momentum=0.9, decay=0.0005)
+opt = SGD(lr=0.01, momentum=0.9, decay=0.0005)
 
 #model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME.best_loss.hdf5")
     
@@ -99,7 +100,7 @@ model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy
 plot_model(model, to_file="model_inceptv3.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_CAM.best_loss.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE.best_loss.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=3, min_lr=0.000001)
