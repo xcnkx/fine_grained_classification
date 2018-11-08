@@ -13,7 +13,7 @@ from keras import backend as K
 from keras.preprocessing.image import array_to_img, img_to_array, load_img
 from keras.models import load_model
 
-def Grad_Cam(input_model, x, layer_name):
+def Grad_Cam(input_model, x, layer_name, img_size):
     '''
     Args:
        input_model: model object
@@ -24,7 +24,7 @@ def Grad_Cam(input_model, x, layer_name):
        jetcam: heat map image(array)
 
     '''
-    img_size = 336
+    
     # preprocessing
     X = np.expand_dims(x, axis=0)
 

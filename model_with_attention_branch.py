@@ -13,7 +13,7 @@ from keras.models import Sequential, Model
 from keras.layers import Input, Dense, Dropout, Activation, Flatten, Multiply
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D, GlobalAveragePooling2D, AveragePooling2D
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau
-from keras.optimizers import SGD
+from keras.optimizers import SGD, RMSprop
 from keras.utils.np_utils import to_categorical
 from keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
 from keras.regularizers import l2
@@ -27,7 +27,6 @@ from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 import matplotlib.pyplot as plt
 from keras.utils.vis_utils import plot_model
 import pandas as pd
-import se_inception_v3
 #%%
 
 K.clear_session()
@@ -74,9 +73,8 @@ validation_generator = test_datagen.flow_from_directory(
 
 input_tensor = Input(shape=(img_size, img_size, 3))
 #base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
-base_model = se_inception_v3.se_inception_v3(include_top=False, input_tensor=input_tensor)
-base_model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME.best_loss.hdf5",by_name=True)
-    
+base_model = InceptionV3(include_top=False, input_tensor=input_tensor)
+
 
 #for layer in base_model.layers:
 #    layer.trainable = False
@@ -91,7 +89,8 @@ top_model.add(Dense(num_classes, activation='softmax'))
 
 model = Model(inputs=base_model.input, outputs=top_model(base_model.output))
 
-opt = SGD(lr=0.01, momentum=0.9, decay=0.0005)
+#opt = SGD(lr=0.01, momentum=0.9, decay=0.0005)
+opt = RMSprop(lr=0.01, momentum=0.9, decay=0.0005)
 
 #model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME.best_loss.hdf5")
     
@@ -112,7 +111,7 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
 
 history = model.fit_generator(train_generator,
                     steps_per_epoch=train_nb/BATCH_SIZE,
-                    epochs=60,
+                    epochs=15,
                     validation_data=validation_generator,
                     validation_steps=64,
                     verbose=1,
@@ -128,7 +127,7 @@ plt.title('model_without_MAMC accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_without_OSME_SE{0:%d%m}-{0:%H%M%S}.png".format(now))
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_without_OSME_CAM{0:%d%m}-{0:%H%M%S}.png".format(now))
 plt.show()
 
 #loss
@@ -138,5 +137,5 @@ plt.title('model_without_MAMC loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_SE{0:%d%m}-{0:%H%M%S}.png".format(now))
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_CAM{0:%d%m}-{0:%H%M%S}.png".format(now))
 plt.show()
