@@ -32,7 +32,7 @@ import grad_cam
 from keras.models import load_model
 import os
 
-from se_inception_v3 import se_inception_v3
+from se_inception_v3 import se_inception_v3, preprocess_input
 #%%
 import tensorflow as tf
 from keras.backend import tensorflow_backend
@@ -83,7 +83,7 @@ with open("/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/classes.txt") as f:
 
 #%% create data generator 
 
-train_datagen = ImageDataGenerator(rescale = 1.0/255,
+train_datagen = ImageDataGenerator(#rescale = 1.0/255,
 #                                   featurewise_center=True,
 #                                   featurewise_std_normalization=True,
                                    zoom_range=[0.7,1.0],
@@ -91,8 +91,11 @@ train_datagen = ImageDataGenerator(rescale = 1.0/255,
 #                                   zca_whitening=True,
                                    horizontal_flip=True,
                                    vertical_flip=False,
+                                   preprocessing_function=preprocess_input
                                    )
-test_datagen = ImageDataGenerator(rescale = 1.0/255
+test_datagen = ImageDataGenerator(#rescale = 1.0/255
+        preprocessing_function=preprocess_input
+
         )
 
 
@@ -168,7 +171,7 @@ plot_model(model, to_file="model.png", show_shapes=True)
 import datetime
 now = datetime.datetime.now()
 
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_osme_se_inceptv3_gamma.best_loss_.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_osme_se_inceptv3_alpha.best_loss_.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=5, min_lr=0.0000001)
@@ -179,7 +182,7 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
 
 history = model.fit_generator(train_generator,
                     steps_per_epoch=train_nb/BATCH_SIZE,
-                    epochs=15,
+                    epochs=60,
                     validation_data=validation_generator,
                     validation_steps=64,
                     verbose=1,
@@ -195,8 +198,8 @@ plt.title('model_without_MAMC accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_se_inceptv3_gamma_with_OSME{0:%d%m}-{0:%H%M%S}.png".format(now))
-plt.show()
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_se_inceptv3_alpha_with_OSME{0:%d%m}-{0:%H%M%S}.png".format(now))
+#plt.show()
 
 #loss
 plt.plot(history.history['loss'])
@@ -205,8 +208,8 @@ plt.title('model_without_MAMC loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_se_inceptv3_gamma_with_OSME{0:%d%m}-{0:%H%M%S}.png".format(now))
-plt.show()
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_se_inceptv3_alpha_with_OSME{0:%d%m}-{0:%H%M%S}.png".format(now))
+#plt.show()
 
 
 #%%

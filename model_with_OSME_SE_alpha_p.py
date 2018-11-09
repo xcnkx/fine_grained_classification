@@ -32,7 +32,7 @@ import grad_cam
 from keras.models import load_model
 import os
 
-from se_inception_v3 import se_inception_v3
+from se_inception_v3 import se_inception_v3, preprocess_input
 #%%
 import tensorflow as tf
 from keras.backend import tensorflow_backend
@@ -83,7 +83,7 @@ with open("/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/classes.txt") as f:
 
 #%% create data generator 
 
-train_datagen = ImageDataGenerator(rescale = 1.0/255,
+train_datagen = ImageDataGenerator(#rescale = 1.0/255,
 #                                   featurewise_center=True,
 #                                   featurewise_std_normalization=True,
                                    zoom_range=[0.7,1.0],
@@ -91,8 +91,11 @@ train_datagen = ImageDataGenerator(rescale = 1.0/255,
 #                                   zca_whitening=True,
                                    horizontal_flip=True,
                                    vertical_flip=False,
+                                   preprocessing_function=preprocess_input
                                    )
-test_datagen = ImageDataGenerator(rescale = 1.0/255
+test_datagen = ImageDataGenerator(#rescale = 1.0/255
+        preprocessing_function=preprocess_input
+
         )
 
 
@@ -127,14 +130,16 @@ base_model.load_weights("/home/n-kamiya/.keras/models/inception_v3_weights_tf_di
 #        
 #%% Implementation of OSME module
 
+split = Lambda( lambda x: tf.split(x,num_or_size_splits=2,axis=3))(base_model.output)
+#%%
 def osme_block(in_block, ch, ratio=16, name=None):
     z = GlobalAveragePooling2D()(in_block) # 1
     x = Dense(ch//ratio, activation='relu')(z) # 2
     x = Dense(ch, activation='sigmoid', name=name)(x) # 3
     return Multiply()([in_block, x]) # 4
 
-s_1 = osme_block(base_model.output, base_model.output_shape[3], name='attention1')
-s_2 = osme_block(base_model.output, base_model.output_shape[3], name='attention2')
+s_1 = osme_block(split[0], split[0].shape[3].value, name='attention1')
+s_2 = osme_block(split[1], split[1].shape[3].value, name='attention2')
 
 fc1 = Flatten()(s_1)
 fc2 = Flatten()(s_2)
@@ -166,7 +171,7 @@ plot_model(model, to_file="model.png", show_shapes=True)
 import datetime
 now = datetime.datetime.now()
 
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_osme_se_inceptv3_drop.best_loss_.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_osme_se_inceptv3_alpha_p.best_loss_.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=5, min_lr=0.0000001)
@@ -193,7 +198,8 @@ plt.title('model_without_MAMC accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_se_inceptv3_with_OSME_drop{0:%d%m}-{0:%H%M%S}.png".format(now))
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_se_inceptv3_alpha_with_OSME_p{0:%d%m}-{0:%H%M%S}.png".format(now))
+#plt.show()
 
 #loss
 plt.plot(history.history['loss'])
@@ -202,8 +208,8 @@ plt.title('model_without_MAMC loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_se_inceptv3_with_OSME_drop{0:%d%m}-{0:%H%M%S}.png".format(now))
-
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_se_inceptv3_alpha_with_OSME_p{0:%d%m}-{0:%H%M%S}.png".format(now))
+#plt.show()
 
 
 #%%
