@@ -206,7 +206,7 @@ plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_se_inceptv3_with_OSME
 
 
 
-#%%
+#%%model_evaluation
 
 model = load_model("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE_miru.best_loss.hdf5", custom_objects={"tf": tf})
 #%%
