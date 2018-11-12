@@ -208,23 +208,24 @@ plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_se_inceptv3_with_OSME
 
 #%%
 
-#model = load_model("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE.best_loss.hdf5", custom_objects={"tf": tf})
-##%%
-#for file in os.listdir("/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/test/013.Bobolink/"):
-#    x = img_to_array(load_img(file, target_size=(448,448)))
-#
-#    y_proba = model.predict(x.reshape([-1,448,448,3]))
-#    print(classes[int(y_proba.argmax(axis = -1))])
-##%%Model Evaluation
-#model._generator(generator=validation_generator, steps = test_nb/BATCH_SIZE, verbose = 1)
-##%%
-#image1 = grad_cam.Grad_Cam(model, x, "multiply_1")
-#image2 = grad_cam.Grad_Cam(model, x, "multiply_2")
-#
-#image1 = array_to_img(image1)
-#image2 = array_to_img(image2)
-#
-#image1.show()
-#image1.save("/home/n-kamiya/images/inceptv3_beta_multiply_1.png")
-#image2.show()
-#image2.save("/home/n-kamiya/images/inceptv3_beta_multiply_2.png")
+model = load_model("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE_miru.best_loss.hdf5", custom_objects={"tf": tf})
+#%%
+for file in os.listdir("/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/test/013.Bobolink/"):
+    x = img_to_array(load_img(file, target_size=(448,448)))
+
+    y_proba = model.predict(x.reshape([-1,448,448,3]))
+    print(classes[int(y_proba.argmax(axis = -1))])
+#%%Model Evaluation
+model.evaluate_generator(generator=validation_generator, steps = test_nb/BATCH_SIZE, verbose = 1)
+#%
+
+image1 = grad_cam.Grad_Cam(model, x, "multiply_1",336)
+image2 = grad_cam.Grad_Cam(model, x, "multiply_2",336)
+
+image1 = array_to_img(image1)
+image2 = array_to_img(image2)
+
+image1.show()
+image1.save("/home/n-kamiya/images/inceptv3_se_osme_miru_multiply_1.png")
+image2.show()
+image2.save("/home/n-kamiya/images/inceptv3_se_osme_miru_multiply_2.png")

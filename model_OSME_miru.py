@@ -10,7 +10,7 @@ from keras.callbacks import EarlyStopping
 from keras.applications.resnet50 import ResNet50
 from keras.applications.inception_v3 import InceptionV3
 from keras.models import Sequential, Model
-from keras.layers import Input, Dense, Dropout, Activation, Flatten, Multiply, Lambda, concatenate
+from keras.layers import Input, Dense, Dropout, Activation, Flatten, Multiply, Lambda, concatenate, Add
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D, GlobalAveragePooling2D, AveragePooling2D
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau
 from keras.optimizers import SGD
@@ -27,7 +27,8 @@ from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 import matplotlib.pyplot as plt
 from keras.utils.vis_utils import plot_model
 import pandas as pd
-import se_inception_v3
+import se_inception_v3_1 as se_inception_v3
+from se_inception_v3 import conv2d_bn, squeeze_excite_block
 import tensorflow as tf
 #%%
 
@@ -63,6 +64,7 @@ train_generator = train_datagen.flow_from_directory(
         target_size=(img_size, img_size),
         batch_size=BATCH_SIZE,
         seed = 13,
+        multi_outputs=True,
         )
 
 validation_generator = test_datagen.flow_from_directory(
@@ -70,6 +72,7 @@ validation_generator = test_datagen.flow_from_directory(
         target_size=(img_size, img_size),
         batch_size=BATCH_SIZE,
         seed = 13,
+        multi_outputs=True,
         )
 #%% finetuning resnet50
 
@@ -82,33 +85,62 @@ base_model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_inceptv3
 #for layer in base_model.layers:
 #    layer.trainable = False
 #%%
-split = Lambda( lambda x: tf.split(x,num_or_size_splits=2,axis=3))(base_model.output)
 #%%
+
+channel_axis = 3
+
 def osme_block(in_block, ch, ratio=16, name=None):
     z = GlobalAveragePooling2D()(in_block) # 1
     x = Dense(ch//ratio, activation='relu')(z) # 2
     x = Dense(ch, activation='sigmoid', name=name)(x) # 3
     return Multiply()([in_block, x]) # 4
 
-s_1 = osme_block(split[0], split[0].shape[3].value, name='attention1')
-s_2 = osme_block(split[1], split[1].shape[3].value, name='attention2')
+attention = osme_block(base_model.output, base_model.output_shape[3], name='attention1')
+output_1 = osme_block(base_model.output, base_model.output_shape[3], name='output_1')
 
-fc1 = Flatten()(s_1)
-fc2 = Flatten()(s_2)
+output_1 = GlobalAveragePooling2D(name="output1")(output_1)
 
-fc1 = Dense(1024, name='fc1')(fc1)
-fc2 = Dense(1024, name='fc2')(fc2)
+x = Add()([base_model.output, attention])
 
-#fc = fc1
-fc = concatenate([fc1,fc2]) #fc1 + fc2
+# mixed 9: 8 x 8 x 2048
+def last_block(x):
+    for i in range(2):
+        branch1x1 = conv2d_bn(x, 320, 1, 1)
+    
+        branch3x3 = conv2d_bn(x, 384, 1, 1)
+        branch3x3_1 = conv2d_bn(branch3x3, 384, 1, 3)
+        branch3x3_2 = conv2d_bn(branch3x3, 384, 3, 1)
+        branch3x3 = concatenate(
+            [branch3x3_1, branch3x3_2], axis=channel_axis, name='mixed9_' + str(i))
+    
+        branch3x3dbl = conv2d_bn(x, 448, 1, 1)
+        branch3x3dbl = conv2d_bn(branch3x3dbl, 384, 3, 3)
+        branch3x3dbl_1 = conv2d_bn(branch3x3dbl, 384, 1, 3)
+        branch3x3dbl_2 = conv2d_bn(branch3x3dbl, 384, 3, 1)
+        branch3x3dbl = concatenate(
+            [branch3x3dbl_1, branch3x3dbl_2], axis=channel_axis)
+    
+        branch_pool = AveragePooling2D(
+            (3, 3), strides=(1, 1), padding='same')(x)
+        branch_pool = conv2d_bn(branch_pool, 192, 1, 1)
+        x = concatenate(
+            [branch1x1, branch3x3, branch3x3dbl, branch_pool],
+            axis=channel_axis,
+            name='mixed' + str(9 + i))
+    
+        # squeeze and excite block
+        x = squeeze_excite_block(x)
+        return x
 
-x = GlobalAveragePooling2D(name='avg_pool')(base_model.output)
-x = Dense(1024, activation="relu")(x)
-predictions = Dense(classes, activation='softmax', name='predictions')(x)
+x = last_block(x)
+output_2 = GlobalAveragePooling2D(name='output_2')(x)
+ 
+attention_branch = Dense(num_classes, activation='softmax', name='attention_branch')(output_1)
+perception_branch = Dense(num_classes, activation='softmax', name='perception_branch')(output_2)
 
 #%%
-
-model = Model(inputs=base_model.input, outputs=predictions)
+## for these 2 outputs run it requires a custom datagenerator that return a tuple of yield like (x_batch, [y_batch, y_batch])
+model = Model(inputs=base_model.input, outputs=[attention_branch,perception_branch])
 
 opt = SGD(lr=0.01, momentum=0.9, decay=0.0005)
 
@@ -117,10 +149,10 @@ opt = SGD(lr=0.01, momentum=0.9, decay=0.0005)
 model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
 #%%
-plot_model(model, to_file="model_inceptv3.png", show_shapes=True)
+plot_model(model, to_file="model_inceptv3_miru.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE.best_loss.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE_miru_448.best_loss.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=3, min_lr=0.000001)
@@ -136,10 +168,28 @@ history = model.fit_generator(train_generator,
                     validation_steps=64,
                     verbose=1,
                     callbacks=[reduce_lr, checkpointer])
-
-#%% plot results
+#%%
+        
+import json
 import datetime
 now = datetime.datetime.now()
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(MyEncoder, self).default(obj)
+
+with open('history_inceptv3_with_OSME_SE_miru_448{0:%d%m}-{0:%H%M%S}.json'.format(now), 'w') as f:
+    json.dump(history.history, f,cls = MyEncoder)
+    
+    
+#%% plot results
 
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
@@ -147,7 +197,7 @@ plt.title('model_without_MAMC accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_without_OSME_SE{0:%d%m}-{0:%H%M%S}.png".format(now))
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_with_OSME_SE_miru_448{0:%d%m}-{0:%H%M%S}.png".format(now))
 plt.show()
 
 #loss
@@ -157,5 +207,5 @@ plt.title('model_without_MAMC loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_SE{0:%d%m}-{0:%H%M%S}.png".format(now))
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_SE_miru_448{0:%d%m}-{0:%H%M%S}.png".format(now))
 plt.show()

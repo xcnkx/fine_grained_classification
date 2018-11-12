@@ -124,7 +124,9 @@ base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=inpu
 #base_model.load_weights("/home/n-kamiya/.keras/models/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5", by_name=True)
 #for layer in base_model.layers:
 #    layer.trainable = False
-#        
+#%%
+plot_model(base_model, to_file="resnet50_model.png", show_shapes=True)
+
 #%% Implementation of OSME module
 
 split = Lambda( lambda x: tf.split(x,num_or_size_splits=2,axis=3))(base_model.output)

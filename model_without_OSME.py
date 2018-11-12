@@ -34,7 +34,7 @@ BATCH_SIZE = 16
 test_nb = 5794
 train_nb = 5994
 num_classes = 200
-img_size= 448
+img_size= 336
 classes = []
 
 train_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/train/"
@@ -99,7 +99,7 @@ model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy
 plot_model(model, to_file="model_inceptv3.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_CAM.best_loss.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_336.best_loss.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=3, min_lr=0.000001)
@@ -126,7 +126,7 @@ plt.title('model_without_MAMC accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_without_OSME_CAM{0:%d%m}-{0:%H%M%S}.png".format(now))
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_without_OSME_336{0:%d%m}-{0:%H%M%S}.png".format(now))
 plt.show()
 
 #loss
@@ -136,5 +136,5 @@ plt.title('model_without_MAMC loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_CAM{0:%d%m}-{0:%H%M%S}.png".format(now))
+plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_336{0:%d%m}-{0:%H%M%S}.png".format(now))
 plt.show()
