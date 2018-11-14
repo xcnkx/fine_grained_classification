@@ -79,8 +79,9 @@ validation_generator = test_datagen.flow_from_directory(
 input_tensor = Input(shape=(img_size, img_size, 3))
 #base_model = ResNet50(weights = "imagenet", include_top=False, input_tensor=input_tensor)
 base_model = se_inception_v3.se_inception_v3(include_top=False, input_tensor=input_tensor)
-base_model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME.best_loss.hdf5",by_name=True)
-    
+#base_model.load_weights("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME.best_loss.hdf5",by_name=True)
+base_model.load_weights("/home/n-kamiya/.keras/models/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5", by_name=True)
+
 
 #for layer in base_model.layers:
 #    layer.trainable = False
@@ -156,7 +157,7 @@ model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy
 plot_model(model, to_file="model_inceptv3_miru.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE_miru_448.best_loss.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_miru_448.best_loss.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=3, min_lr=0.000001)
@@ -189,27 +190,27 @@ class MyEncoder(json.JSONEncoder):
         else:
             return super(MyEncoder, self).default(obj)
 
-with open('history_inceptv3_with_OSME_SE_miru_448{0:%d%m}-{0:%H%M%S}.json'.format(now), 'w') as f:
+with open('/home/n-kamiya/models/model_without_MAMC/history_inceptv3_miru_448{0:%d%m}-{0:%H%M%S}.json'.format(now), 'w') as f:
     json.dump(history.history, f,cls = MyEncoder)
     
     
 #%% plot results
 
-plt.plot(history.history['acc'])
-plt.plot(history.history['val_acc'])
-plt.title('model_without_MAMC accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_with_OSME_SE_miru_448{0:%d%m}-{0:%H%M%S}.png".format(now))
-plt.show()
-
-#loss
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model_without_MAMC loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_SE_miru_448{0:%d%m}-{0:%H%M%S}.png".format(now))
-plt.show()
+#plt.plot(history.history['acc'])
+#plt.plot(history.history['val_acc'])
+#plt.title('model_without_MAMC accuracy')
+#plt.ylabel('accuracy')
+#plt.xlabel('epoch')
+#plt.legend(['train', 'test'], loc='upper left')
+#plt.savefig("/home/n-kamiya/models/model_without_MAMC/history_inceptv3_with_OSME_miru_448_{0:%d%m}-{0:%H%M%S}.png".format(now))
+##plt.show()
+#
+##loss
+#plt.plot(history.history['loss'])
+#plt.plot(history.history['val_loss'])
+#plt.title('model_without_MAMC loss')
+#plt.ylabel('loss')
+#plt.xlabel('epoch')
+#plt.legend(['train', 'test'], loc='upper left')
+#plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_inceptv3_without_OSME_miru_448_{0:%d%m}-{0:%H%M%S}.png".format(now))
+##plt.show()
