@@ -34,29 +34,21 @@ import tensorflow as tf
 
 K.clear_session()
 BATCH_SIZE = 16
-test_nb = 5794
-train_nb = 5994
-num_classes = 200
+train_nb = 20580
+num_classes = 120
 img_size= 448
 classes = []
 
-train_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/train/"
-test_path = "/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/test/"
-#%%
 
-
-with open("/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/classes.txt") as f:
-    for l in f.readlines():
-        data = l.split()
-        classes.append(data[1])
-
+train_path = "/home/n-kamiya/datasets/Standford_dogs_dataset/Images"
 
 #%% create data generator 
 
 train_datagen = ImageDataGenerator(rescale = 1./255, 
-                                   zoom_range=[0.6,1],
-                                   rotation_range=30,
-                                   horizontal_flip=True)
+                                   zoom_range=[0.8,1],
+#                                   rotation_range=30,
+                                   horizontal_flip=True,
+                                   validation_split=0.1)
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
 train_generator = train_datagen.flow_from_directory(
@@ -65,14 +57,16 @@ train_generator = train_datagen.flow_from_directory(
         batch_size=BATCH_SIZE,
         seed = 13,
         multi_outputs=True,
+        subset="training",
         )
 
-validation_generator = test_datagen.flow_from_directory(
-        test_path,
+validation_generator = train_datagen.flow_from_directory(
+        train_path,
         target_size=(img_size, img_size),
         batch_size=BATCH_SIZE,
         seed = 13,
         multi_outputs=True,
+        subset="validation",
         )
 #%% finetuning resnet50
 
@@ -153,7 +147,7 @@ model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy
 plot_model(model, to_file="model_inceptv3_miru.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE_miru_448.best_loss.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_OSME_SE_miru_dogs.best_loss.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=3, min_lr=0.000001)
@@ -163,12 +157,11 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
 #%% fit_generator
 STEP_SIZE_TRAIN=train_generator.n//train_generator.batch_size
 STEP_SIZE_VALID=validation_generator.n//validation_generator.batch_size
-
 history = model.fit_generator(train_generator,
                     steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=40,
+                    epochs=50,
                     validation_data=validation_generator,
-                    validation_steps=64,
+                    validation_steps=STEP_SIZE_VALID,
                     verbose=1,
                     callbacks=[reduce_lr, checkpointer])
 #%%
@@ -188,7 +181,7 @@ class MyEncoder(json.JSONEncoder):
         else:
             return super(MyEncoder, self).default(obj)
 
-with open('/home/n-kamiya/models/model_without_MAMC/history_inceptv3_with_OSME_miru_448{0:%d%m}-{0:%H%M%S}.json'.format(now), 'w') as f:
+with open('/home/n-kamiya/models/model_without_MAMC/history_inceptv3_with_OSME_miru_dogs{0:%d%m}-{0:%H%M%S}.json'.format(now), 'w') as f:
     json.dump(history.history, f,cls = MyEncoder)
     
     

@@ -28,7 +28,7 @@ from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 import matplotlib.pyplot as plt
 from keras.utils.vis_utils import plot_model
 import pandas as pd
-import grad_cam
+#import grad_cam
 from keras.models import load_model
 import os
 
@@ -208,19 +208,19 @@ plt.savefig("/home/n-kamiya/models/model_without_MAMC/loss_se_inceptv3_with_OSME
 
 #%%model_evaluation
 
-model = load_model("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_without_OSME_SE_miru.best_loss.hdf5", custom_objects={"tf": tf})
+model_dogs = load_model("/home/n-kamiya/models/model_without_MAMC/model_inceptv3_OSME_SE_miru_dogs_mod.best_loss.hdf5")
 #%%
 for file in os.listdir("/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/test/013.Bobolink/"):
     x = img_to_array(load_img(file, target_size=(448,448)))
 
-    y_proba = model.predict(x.reshape([-1,448,448,3]))
+    y_proba = model_dogs.predict(x.reshape([-1,448,448,3]))
     print(classes[int(y_proba.argmax(axis = -1))])
 #%%Model Evaluation
-model.evaluate_generator(generator=validation_generator, steps = test_nb/BATCH_SIZE, verbose = 1)
-#%
+model_dogs.evaluate_generator(generator=validation_generator, steps = 10, verbose = 1)
+#%%
 
-image1 = grad_cam.Grad_Cam(model, x, "multiply_1",336)
-image2 = grad_cam.Grad_Cam(model, x, "multiply_2",336)
+image1 = grad_cam.Grad_Cam(model_dogs, x, "multiply_1",336)
+image2 = grad_cam.Grad_Cam(model_dogs, x, "multiply_2",336)
 
 image1 = array_to_img(image1)
 image2 = array_to_img(image2)
