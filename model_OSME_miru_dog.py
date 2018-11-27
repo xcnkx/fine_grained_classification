@@ -88,11 +88,11 @@ def osme_block(in_block, ch, ratio=16, name=None):
     z = GlobalAveragePooling2D()(in_block) # 1
     x = Dense(ch//ratio, activation='relu')(z) # 2
     x = Dense(ch, activation='sigmoid', name=name)(x) # 3
-    return Multiply()([in_block, x]) # 4
+    return x # 4
 
-attention = osme_block(base_model.output, base_model.output_shape[3], name='attention1')
+attention = Multiply()([base_model.output,osme_block(base_model.output, base_model.output_shape[3], name='attention1')])
+
 output_1 = osme_block(base_model.output, base_model.output_shape[3], name='output_1')
-
 output_1 = GlobalAveragePooling2D(name="output1")(output_1)
 
 x = Add()([base_model.output, attention])
@@ -147,7 +147,7 @@ model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy
 plot_model(model, to_file="model_inceptv3_miru.png", show_shapes=True)
 
 #%% implement checkpointer and reduce_lr (to prevent overfitting)
-checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_OSME_SE_miru_dogs.best_loss.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='/home/n-kamiya/models/model_without_MAMC/model_inceptv3_OSME_SE_miru_dogs_test1.best_loss.hdf5', verbose=1, save_best_only=True)
 
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1,
                   patience=3, min_lr=0.000001)
@@ -159,7 +159,7 @@ STEP_SIZE_TRAIN=train_generator.n//train_generator.batch_size
 STEP_SIZE_VALID=validation_generator.n//validation_generator.batch_size
 history = model.fit_generator(train_generator,
                     steps_per_epoch=STEP_SIZE_TRAIN,
-                    epochs=50,
+                    epochs=20,
                     validation_data=validation_generator,
                     validation_steps=STEP_SIZE_VALID,
                     verbose=1,
@@ -181,7 +181,7 @@ class MyEncoder(json.JSONEncoder):
         else:
             return super(MyEncoder, self).default(obj)
 
-with open('/home/n-kamiya/models/model_without_MAMC/history_inceptv3_with_OSME_miru_dogs{0:%d%m}-{0:%H%M%S}.json'.format(now), 'w') as f:
+with open('/home/n-kamiya/models/model_without_MAMC/history_inceptv3_with_OSME_miru_dogs_test1{0:%d%m}-{0:%H%M%S}.json'.format(now), 'w') as f:
     json.dump(history.history, f,cls = MyEncoder)
     
     
