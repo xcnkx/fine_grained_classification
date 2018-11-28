@@ -135,45 +135,72 @@ crop_branch = Convolution2D(1,(1,1), name='attetion_map_crop', activation='sigmo
 def APN(input_list):
     # get input tensor
     input_tensor = input_list[0]
+    
     global crop_size
     # get input_image tensor
     input_image = input_list[1]
     
     # assert it is a square image
     assert input_tensor.get_shape()[1] == input_tensor.get_shape()[2]
-    
     # get length
     length = int(input_tensor.get_shape()[1])
     
     # create a zeros tensor for cropped image
-    cropped_img = K.zeros((0, int(crop_size/2), int(crop_size/2), 1))
+    cropped_imgs = K.zeros((0, int(crop_size/2), int(crop_size/2), 1))
     
-    tensor = K.reshape(input_tensor , shape=(tf.shape(input_tensor)[0], 100))
+    tensor = K.reshape(input_tensor , shape=(tf.shape(input_tensor)[0], int(input_tensor.get_shape()[1])*(input_tensor.get_shape()[2]) ))
+#    
+    N = tensor.get_shape()[0]
+#    max_nums = K.argmax(tensor[1])
     
-    tmp = K.argmax(tensor[1])
-    
-    # 1d ->  2d
-    for i in tmp:
-        _x = tmp % length
-        _y = int(tmp / length)
+    def condition(i, x):
+    # Tensor("while/Merge:0", shape=(), dtype=int32) Tensor("while/Merge_1:0", shape=(), dtype=int32)
+        return i < N
+
+    def crop(i,x):
+
+        max_value = K.argmax(x[i])
+
+        _x = max_value % length
+        _y = max_value / length
+                
+        x = tf.scalar_mul(int(crop_size/length), _x) # 2 * 3 
+        y = tf.scalar_mul(int(crop_size/length), _y) # 2 * 3         
         
-        
-        x = int(_x*(crop_size/length))
-        y = int(_y*(crop_size/length))
+        x = tf.to_int32(x)
+        y = tf.to_int32(y)
         
         l = crop_size/2
-        margin = l/2 -1
+        margin = l/2 
         
-        if x <= margin or x >= (crop_size-margin):
-            x = margin
+        margin = K.constant(int(margin), dtype=tf.int32)
+        crop_s = K.constant(int(crop_size), dtype=tf.int32)
         
-        if y <= margin or y >= (crop_size-margin):
-            y = margin
-            
-        cropped_img[i] = input_image[i, x-margin:(x+margin), y-margin:(y+margin), :]
+        diff = tf.subtract(crop_s, margin)         
+        
+#        if x < margin or x > (crop_s-margin):
+#            x = marginx =  
+        cond_1 = tf.math.logical_or(tf.math.greater(x, diff),tf.math.less(x, margin))
+
+#        
+#        if y < margin or y > (crop_s-margin):
+#            y = margin
+        
+        cond_2 = tf.math.logical_or(tf.math.less(y, margin),tf.math.greater(y, diff))
+
+        tf.cond(cond_1, lambda: x , lambda: x)
+        tf.cond(cond_2, lambda: y, lambda: y)
+        
+        cropped_imgs[i] = input_image[i, x-margin:(x+margin), y-margin:(y+margin), :]
+        
+        i += 1
+    
+    tf.while_loop(crop, condition, (0, tensor))
+    
+    
 
     #return batch tensor
-    return cropped_img
+    return cropped_imgs 
     
 #%%
 #TODO: impementation of Lamda layer and shape
