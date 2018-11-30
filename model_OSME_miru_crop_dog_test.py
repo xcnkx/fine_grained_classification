@@ -58,7 +58,8 @@ train_generator = train_datagen.flow_from_directory(
         batch_size=BATCH_SIZE,
         seed = 13,
         multi_outputs=True,
-        subset="training",
+        out_n = 2,
+        subset="training"
         )
 
 validation_generator = train_datagen.flow_from_directory(
@@ -68,6 +69,7 @@ validation_generator = train_datagen.flow_from_directory(
         seed = 13,
         multi_outputs=True,
         subset="validation",
+        out_n = 2
         )
 
 #%% add random crop function

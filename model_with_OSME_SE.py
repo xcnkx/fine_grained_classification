@@ -86,7 +86,7 @@ with open("/home/n-kamiya/datasets/CUB2002011/CUB_200_2011/classes.txt") as f:
 train_datagen = ImageDataGenerator(rescale = 1.0/255,
 #                                   featurewise_center=True,
 #                                   featurewise_std_normalization=True,
-                                   zoom_range=[0.7,1.0],
+                                   zoom_range=[0.8,1.0],
                                    rotation_range=30,
 #                                   zca_whitening=True,
                                    horizontal_flip=True,
